@@ -2,7 +2,15 @@
 A simple solution for defensive and assert trip wire programming.
 
 ## Description
-This is a very simple solution for a better programming pratice of assert trip wire programming with ASSERT_WITH_TRACE( ) and print_stack_trace( ). It should work on CPP11 and above and with C. I tryed on Linux x86_64 and ARM64 and it works correctly. This prints the stack trace, the function name, the type of it's parameters, the filename, and the the line number. You can enable or disable the asserts with the change of a global variable. This uses libbacktrace and the example code from the following article from MarK Tang, that was adapted and modified and build uppon to include also the ASSERT_WITH_TRACE part.
+This is a very simple solution for a better programming pratice of assert trip wire programming with ASSERT_WITH_TRACE( ) and print_stack_trace( ). It should work on CPP11 and above and with C. I tryed on Linux x86_64 and ARM64 and it works correctly. This prints the stack trace, the function name, the type of it's parameters, the filename, and the the line number. You can enable or disable the asserts with the change of a global variable. This uses libbacktrace and the example code from the following article from MarK Tang, that was adapted and modified and build uppon to include also the ASSERT_WITH_TRACE part. <br>
+It can also be used to print the stack trace in case a signal occurs like a segmentation fault core dump, by doing a NULL pointer dereferencing, exemple: <br>
+
+``` cpp
+int *p = nullptr;
+*p = 42;          // Dereference NULL -> SIGSEGV
+                  // Segmentatio fault core dump :-)
+                  // We dumped the core memory made with nucleo core ferrites!
+```
 
 ## References
 - GitHub ianlancetaylor - libbacktrace <br>
@@ -11,6 +19,7 @@ This is a very simple solution for a better programming pratice of assert trip w
   C - CPP: printing stacktrace containing file name, function name, and line numbers using libbacktrace<br>
   [https://tjysdsg.github.io/libbacktrace/](https://tjysdsg.github.io/libbacktrace/)
 
+## Description of use
 
 ``` cpp
 ASSERT_WITH_TRACE( expression, descricption );
@@ -74,6 +83,57 @@ The configuration string is incorrect !
 ../sysdeps/x86_64/start.S:115 in function _start
 (null):0 in function (null)
 Abortado (núcleo despejado)
+
+```
+
+## Example NULL pointer dereferencing generating a signal segmentation fault core dump
+
+To show the print_stack_trace( ) after a signal like a segmentation fault core dump, so you can see imediatlly where in your code you have a introduced a bug or a memory access was invalid. put the following code in the main.
+
+``` cpp
+
+#include <cstring>
+
+int main( ) {
+
+    // Install our SIGSEGV handler ( using sigaction ):
+    struct sigaction sa;
+    memset( &sa, 0, sizeof( sa ) );
+    sa.sa_sigaction = signal_handler;
+    sa.sa_flags = SA_SIGINFO | SA_RESTART; 
+    if ( sigaction( SIGSEGV, &sa, nullptr ) != 0 ) {
+        perror( "sigaction" );
+        return EXIT_FAILURE;
+    }
+
+    // The rest of your main code...
+}
+```
+
+
+Example of output
+
+``` bash
+(base) joaocarvalho@soundofsilence:~/libbacktrace/assert_with_trace> ./out.exe
+Inside function_a( ).
+Inside function_b( ) .
+Inside function_c( ) . Cause Null Pointer dereferencing -> Segmentation fault core dump!
+
+[-] Caught signal 11 (SIGSEGV) at address (nil)
+Segmentation fault
+
+ ---Stack Back Trace---
+/home/joaocarvalho/libbacktrace/assert_with_trace/assert_with_trace.cpp:65 in function print_back_trace
+/home/joaocarvalho/libbacktrace/assert_with_trace/assert_with_trace.cpp:105 in function signal_handler(int, siginfo_t*, void*)
+(null):0 in function (null)
+/home/joaocarvalho/libbacktrace/assert_with_trace/main.cpp:30 in function function_c(int)
+/home/joaocarvalho/libbacktrace/assert_with_trace/main.cpp:47 in function function_b(int)
+/home/joaocarvalho/libbacktrace/assert_with_trace/main.cpp:53 in function function_a(int)
+/home/joaocarvalho/libbacktrace/assert_with_trace/main.cpp:75 in function main
+(null):0 in function (null)
+(null):0 in function (null)
+../sysdeps/x86_64/start.S:115 in function _start
+(null):0 in function (null)
 
 ```
 
